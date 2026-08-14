@@ -234,9 +234,16 @@ impl ClientMasterService for ClientMasterServiceImpl {
     async fn delete_file(&self, request: Request<PathRequest>) -> Result<Response<Empty>, Status> {
         let req = request.into_inner();
         let path = Path::new(&req.path);
-        self.namespace
+        let meta = self
+            .namespace
             .delete_file(path)
             .map_err(|e| Status::not_found(e.to_string()))?;
+
+        for handle in meta.chunks {
+            if let Some(mut chunk_meta) = self.chunk_table.inner.get_mut(&handle) {
+                chunk_meta.pending_delete = true;
+            }
+        }
 
         Ok(Response::new(Empty {}))
     }

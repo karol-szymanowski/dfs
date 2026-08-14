@@ -67,3 +67,81 @@ impl CloneService for CloneServiceImpl {
         }
     }
 }
+
+pub async fn send_clone(
+    store: Arc<ChunkStore>,
+    handle: u64,
+    version: u64,
+    target_addr: String,
+) -> anyhow::Result<()> {
+    use crate::checksum::compute_block_crc32;
+    use gfs_proto::common::{ChunkHandle, ChunkVersion};
+    use gfs_proto::p2p_clone::clone_service_client::CloneServiceClient;
+
+    let meta = store
+        .get_meta(handle)
+        .map_err(|e| anyhow::anyhow!("Chunk {} not found locally for clone: {}", handle, e))?;
+
+    let (data, _) = store.read_chunk_data(handle, 0, meta.size)?;
+    let full_chunk_crc32 = compute_block_crc32(&data);
+
+    let frame_size = 1024 * 1024; // 1MB frames
+    let total_len = data.len();
+    let num_frames = if total_len == 0 {
+        1
+    } else {
+        total_len.div_ceil(frame_size)
+    };
+
+    let mut requests = Vec::new();
+    if total_len == 0 {
+        requests.push(CloneChunkRequest {
+            chunk: Some(ChunkHandle { id: handle }),
+            version: Some(ChunkVersion { value: version }),
+            payload: Vec::new(),
+            meta: Vec::new(),
+            offset: 0,
+            frame_crc32: 0,
+            full_chunk_crc32,
+            is_last_frame: true,
+        });
+    } else {
+        for (i, chunk_slice) in data.chunks(frame_size).enumerate() {
+            let is_last = i + 1 == num_frames;
+            requests.push(CloneChunkRequest {
+                chunk: Some(ChunkHandle { id: handle }),
+                version: Some(ChunkVersion { value: version }),
+                payload: chunk_slice.to_vec(),
+                meta: Vec::new(),
+                offset: (i * frame_size) as u64,
+                frame_crc32: compute_block_crc32(chunk_slice),
+                full_chunk_crc32,
+                is_last_frame: is_last,
+            });
+        }
+    }
+
+    let connect_url = if target_addr.starts_with("http://") {
+        target_addr.clone()
+    } else {
+        format!("http://{}", target_addr)
+    };
+
+    let mut client = CloneServiceClient::connect(connect_url)
+        .await?
+        .max_decoding_message_size(128 * 1024 * 1024)
+        .max_encoding_message_size(128 * 1024 * 1024);
+
+    let stream = tokio_stream::iter(requests);
+    let resp = client.clone_push(stream).await?.into_inner();
+
+    if resp.success {
+        info!(
+            "Successfully completed P2P clone of chunk {} to {}",
+            handle, target_addr
+        );
+        Ok(())
+    } else {
+        anyhow::bail!("Clone push failed: {}", resp.message)
+    }
+}

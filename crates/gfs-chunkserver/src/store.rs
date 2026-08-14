@@ -207,7 +207,16 @@ impl ChunkStore {
                 }
             }
         }
-
         Ok(result)
+    }
+
+    pub fn delete_chunk(&self, handle: u64) -> Result<(), StoreError> {
+        let chunk_lock = self.locks.get_lock(handle);
+        let _guard = chunk_lock.write();
+        let dir = self.chunk_dir(handle);
+        if dir.exists() {
+            fs::remove_dir_all(&dir)?;
+        }
+        Ok(())
     }
 }

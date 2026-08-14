@@ -120,6 +120,10 @@ async fn main() -> anyhow::Result<()> {
                 _ = interval.tick() => {
                     if let Ok(mut client) = MasterChunkServiceClient::connect(master_addr.clone()).await {
                         let chunks = hb_store.list_chunks().unwrap_or_default();
+                        let used_bytes: u64 = chunks.values().map(|meta| meta.size as u64).sum();
+                        let total_capacity: u64 = 100 * 1024 * 1024 * 1024; // 100GB
+                        let free_bytes = total_capacity.saturating_sub(used_bytes);
+
                         let reports = chunks.into_iter().map(|(id, meta)| ChunkReport {
                             handle: Some(gfs_proto::common::ChunkHandle { id }),
                             version: Some(gfs_proto::common::ChunkVersion { value: meta.version }),
@@ -130,13 +134,41 @@ async fn main() -> anyhow::Result<()> {
                         let req = HeartbeatRequest {
                             node: Some(gfs_proto::common::NodeId { value: node_id.clone() }),
                             grpc_addr: grpc_addr.clone(),
-                            free_bytes: 100 * 1024 * 1024 * 1024,
-                            used_bytes: 10 * 1024 * 1024,
+                            free_bytes,
+                            used_bytes,
                             chunks: reports,
                         };
 
-                        if let Err(e) = client.heartbeat(req).await {
-                            error!("Heartbeat RPC to master failed: {}", e);
+                        match client.heartbeat(req).await {
+                            Ok(resp) => {
+                                for cmd in resp.into_inner().commands {
+                                    match cmd.payload {
+                                        Some(gfs_proto::master_chunkserver::master_command::Payload::CloneTo(c)) => {
+                                            if let (Some(h), Some(v), Some(target)) = (c.handle, c.version, c.target) {
+                                                let clone_store = hb_store.clone();
+                                                tokio::spawn(async move {
+                                                    info!("Starting P2P replica clone: chunk {} -> {}", h.id, target.grpc_addr);
+                                                    if let Err(e) = clone::send_clone(clone_store, h.id, v.value, target.grpc_addr.clone()).await {
+                                                        error!("Failed P2P replica clone of chunk {} to {}: {}", h.id, target.grpc_addr, e);
+                                                    }
+                                                });
+                                            }
+                                        }
+                                        Some(gfs_proto::master_chunkserver::master_command::Payload::DeleteChunk(c)) => {
+                                            if let Some(h) = c.handle {
+                                                info!("Asynchronous GC: deleting chunk {} from disk", h.id);
+                                                if let Err(e) = hb_store.delete_chunk(h.id) {
+                                                    error!("Failed to delete chunk {}: {}", h.id, e);
+                                                }
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                error!("Heartbeat RPC to master failed: {}", e);
+                            }
                         }
                     }
                 }

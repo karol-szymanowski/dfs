@@ -32,7 +32,7 @@
 - [x] [**Task 3.3: Write-Ahead OpLog Persistence & Recovery**](#task-33-write-ahead-oplog-persistence--recovery) — `oplog.rs` (binary WAL with CRC32 verification and `fsync`)
 - [x] [**Task 3.4: Leader Election via K8s Leases**](#task-34-leader-election-via-k8s-leases) — `election.rs` (`LeaderElector` trait, `StaticLeader`, `KubeLeaseElector`)
 - [x] [**Task 3.5: Heartbeat Manager & Primary Lease Granting**](#task-35-heartbeat-manager--primary-lease-granting) — `heartbeat.rs` (heartbeat ingestion, 60s primary mutation leases)
-- [x] [**Task 3.6: Self-Healing Replication Balancer & Dead Node Reaper**](#task-36-self-healing-replication-balancer--dead-node-reaper) — `replication.rs` (under-replication detection, dead node eviction)
+- [x] [**Task 3.6: Self-Healing Replication Balancer & Dead Node Reaper**](#task-36-self-healing-replication-balancer--dead-node-reaper) — `replication.rs` (under-replication detection, command queuing, P2P clone dispatch)
 - [x] [**Task 3.7: Client Master RPC Service**](#task-37-client-master-rpc-service) — `rpc.rs` (`CreateFile`, `GetFileInfo`, `AllocateChunk`, `ListDirectory`, `DeleteFile`)
 - [x] [**Task 3.8: Master Server Bootstrapper**](#task-38-master-server-bootstrapper) — `main.rs` (subsystem wiring, background task loops)
 - [ ] [**Task 3.9: OpLog Replay on Leadership Acquisition**](#task-39-oplog-replay-on-leadership-acquisition) — `oplog.rs`, `election.rs` (re-populating namespace and chunk table on takeover)

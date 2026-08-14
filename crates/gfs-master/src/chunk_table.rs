@@ -129,22 +129,25 @@ impl NodeRegistry {
         timeout: std::time::Duration,
     ) -> Vec<(String, NodeState)> {
         let mut live = self.get_live_nodes(timeout);
+        // Sort primarily by used_bytes ascending (least used first)
         live.sort_by(|a, b| {
-            let total_a = a.1.free_bytes + a.1.used_bytes;
-            let ratio_a = if total_a == 0 {
-                0.0
-            } else {
-                a.1.used_bytes as f64 / total_a as f64
-            };
-            let total_b = b.1.free_bytes + b.1.used_bytes;
-            let ratio_b = if total_b == 0 {
-                0.0
-            } else {
-                b.1.used_bytes as f64 / total_b as f64
-            };
-            ratio_a
-                .partial_cmp(&ratio_b)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            a.1.used_bytes.cmp(&b.1.used_bytes).then_with(|| {
+                let total_a = a.1.free_bytes + a.1.used_bytes;
+                let ratio_a = if total_a == 0 {
+                    0.0
+                } else {
+                    a.1.used_bytes as f64 / total_a as f64
+                };
+                let total_b = b.1.free_bytes + b.1.used_bytes;
+                let ratio_b = if total_b == 0 {
+                    0.0
+                } else {
+                    b.1.used_bytes as f64 / total_b as f64
+                };
+                ratio_a
+                    .partial_cmp(&ratio_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
         });
         live.truncate(count);
         live

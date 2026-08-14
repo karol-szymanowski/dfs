@@ -67,20 +67,27 @@ async fn main() -> anyhow::Result<()> {
     let chunk_table = Arc::new(chunk_table::ChunkTable::new());
     let node_registry = Arc::new(chunk_table::NodeRegistry::new());
     let oplog = Arc::new(oplog::OpLog::open(&opts.oplog_path)?);
+    let pending_commands = Arc::new(dashmap::DashMap::new());
 
-    let replication_mgr =
-        replication::ReplicationManager::new(chunk_table.clone(), node_registry.clone());
+    let replication_mgr = replication::ReplicationManager::new(
+        chunk_table.clone(),
+        node_registry.clone(),
+        pending_commands.clone(),
+    );
 
     let rep_token = cancel_token.clone();
     tokio::spawn(async move {
         replication_mgr
-            .run_detector_loop(Duration::from_secs(10), rep_token.clone())
+            .run_detector_loop(Duration::from_secs(2), rep_token.clone())
             .await;
     });
 
     let reap_token = cancel_token.clone();
-    let replication_mgr2 =
-        replication::ReplicationManager::new(chunk_table.clone(), node_registry.clone());
+    let replication_mgr2 = replication::ReplicationManager::new(
+        chunk_table.clone(),
+        node_registry.clone(),
+        pending_commands.clone(),
+    );
     tokio::spawn(async move {
         replication_mgr2
             .run_reaper_loop(Duration::from_secs(5), reap_token)
@@ -98,6 +105,7 @@ async fn main() -> anyhow::Result<()> {
     let chunk_service = heartbeat::MasterChunkServiceImpl::new(
         chunk_table.clone(),
         node_registry.clone(),
+        pending_commands.clone(),
         Duration::from_secs(opts.lease_duration_secs),
     );
 

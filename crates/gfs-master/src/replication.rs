@@ -1,4 +1,7 @@
 use crate::chunk_table::{ChunkTable, NodeRegistry};
+use dashmap::DashMap;
+use gfs_proto::common::{ChunkHandle, ChunkLocation, ChunkVersion, NodeId};
+use gfs_proto::master_chunkserver::{master_command, CloneToCommand, CommandType, MasterCommand};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
@@ -10,13 +13,19 @@ pub const HEARTBEAT_TIMEOUT: Duration = Duration::from_secs(20);
 pub struct ReplicationManager {
     pub chunk_table: Arc<ChunkTable>,
     pub node_registry: Arc<NodeRegistry>,
+    pub pending_commands: Arc<DashMap<String, Vec<MasterCommand>>>,
 }
 
 impl ReplicationManager {
-    pub fn new(chunk_table: Arc<ChunkTable>, node_registry: Arc<NodeRegistry>) -> Self {
+    pub fn new(
+        chunk_table: Arc<ChunkTable>,
+        node_registry: Arc<NodeRegistry>,
+        pending_commands: Arc<DashMap<String, Vec<MasterCommand>>>,
+    ) -> Self {
         Self {
             chunk_table,
             node_registry,
+            pending_commands,
         }
     }
 
@@ -47,17 +56,79 @@ impl ReplicationManager {
     }
 
     pub fn detect_under_replication(&self) {
-        // Scans chunk table for chunks where locations.len() < REPLICATION_FACTOR
+        let live_nodes = self.node_registry.get_live_nodes(HEARTBEAT_TIMEOUT);
+        if live_nodes.is_empty() {
+            return;
+        }
+
         for entry in self.chunk_table.inner.iter() {
             let handle = *entry.key();
             let meta = entry.value();
-            if meta.locations.len() < REPLICATION_FACTOR && !meta.pending_delete {
-                warn!(
-                    "Chunk {} is under-replicated: {} / {} replicas",
-                    handle,
-                    meta.locations.len(),
-                    REPLICATION_FACTOR
-                );
+            if meta.locations.is_empty()
+                || meta.locations.len() >= REPLICATION_FACTOR
+                || meta.pending_delete
+            {
+                continue;
+            }
+
+            warn!(
+                "Chunk {} is under-replicated: {} / {} replicas",
+                handle,
+                meta.locations.len(),
+                REPLICATION_FACTOR
+            );
+
+            let src_node_id = match meta.locations.iter().next() {
+                Some(id) => id.clone(),
+                None => continue,
+            };
+
+            let target_candidate = live_nodes
+                .iter()
+                .find(|(id, _)| !meta.locations.contains(id));
+
+            if let Some((tgt_id, tgt_state)) = target_candidate {
+                let tgt_addr = tgt_state.addr.clone();
+                let already_queued = self
+                    .pending_commands
+                    .get(&src_node_id)
+                    .map(|cmds| {
+                        cmds.iter().any(|c| {
+                            if let Some(master_command::Payload::CloneTo(ref clone_cmd)) = c.payload
+                            {
+                                clone_cmd.handle.as_ref().map(|h| h.id) == Some(handle)
+                            } else {
+                                false
+                            }
+                        })
+                    })
+                    .unwrap_or(false);
+
+                if !already_queued {
+                    info!(
+                        "Queuing self-healing CloneTo command: chunk {} from {} -> {} ({})",
+                        handle, src_node_id, tgt_id, tgt_addr
+                    );
+                    let cmd = MasterCommand {
+                        command_type: CommandType::CloneTo as i32,
+                        payload: Some(master_command::Payload::CloneTo(CloneToCommand {
+                            handle: Some(ChunkHandle { id: handle }),
+                            version: Some(ChunkVersion {
+                                value: meta.version,
+                            }),
+                            target: Some(ChunkLocation {
+                                node: Some(NodeId {
+                                    value: tgt_id.clone(),
+                                }),
+                                grpc_addr: tgt_addr,
+                            }),
+                        })),
+                    };
+                    self.pending_commands
+                        .entry(src_node_id)
+                        .or_default()
+                        .push(cmd);
+                }
             }
         }
     }
