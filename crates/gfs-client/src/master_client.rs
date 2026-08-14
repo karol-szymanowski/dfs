@@ -25,7 +25,11 @@ impl MasterClient {
 
         loop {
             match ClientMasterServiceClient::connect(self.master_addr.clone()).await {
-                Ok(client) => return Ok(client),
+                Ok(client) => {
+                    return Ok(client
+                        .max_decoding_message_size(128 * 1024 * 1024)
+                        .max_encoding_message_size(128 * 1024 * 1024))
+                }
                 Err(e) => {
                     retries -= 1;
                     if retries == 0 {

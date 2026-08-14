@@ -149,8 +149,16 @@ async fn main() -> anyhow::Result<()> {
 
     info!("ChunkServer gRPC listening on {}", opts.listen_addr);
     tonic::transport::Server::builder()
-        .add_service(ChunkDataServiceServer::new(data_service))
-        .add_service(CloneServiceServer::new(clone_service))
+        .add_service(
+            ChunkDataServiceServer::new(data_service)
+                .max_decoding_message_size(128 * 1024 * 1024)
+                .max_encoding_message_size(128 * 1024 * 1024),
+        )
+        .add_service(
+            CloneServiceServer::new(clone_service)
+                .max_decoding_message_size(128 * 1024 * 1024)
+                .max_encoding_message_size(128 * 1024 * 1024),
+        )
         .serve_with_shutdown(opts.listen_addr, async {
             tokio::signal::ctrl_c().await.ok();
             info!("Shutting down chunkserver...");

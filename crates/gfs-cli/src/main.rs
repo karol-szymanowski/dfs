@@ -31,7 +31,7 @@ pub enum Commands {
         local_path: PathBuf,
         #[arg(long, default_value = "0")]
         offset: u64,
-        #[arg(long, default_value = "67108864")] // 64 MB
+        #[arg(long, default_value = "0")] // 0 = read all to EOF
         length: u32,
     },
     #[command(about = "List directory contents")]

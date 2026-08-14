@@ -103,8 +103,16 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Master gRPC listening on {}", opts.listen_addr);
     tonic::transport::Server::builder()
-        .add_service(ClientMasterServiceServer::new(client_service))
-        .add_service(MasterChunkServiceServer::new(chunk_service))
+        .add_service(
+            ClientMasterServiceServer::new(client_service)
+                .max_decoding_message_size(128 * 1024 * 1024)
+                .max_encoding_message_size(128 * 1024 * 1024),
+        )
+        .add_service(
+            MasterChunkServiceServer::new(chunk_service)
+                .max_decoding_message_size(128 * 1024 * 1024)
+                .max_encoding_message_size(128 * 1024 * 1024),
+        )
         .serve_with_shutdown(opts.listen_addr, async {
             tokio::signal::ctrl_c().await.ok();
             info!("Shutting down master server...");

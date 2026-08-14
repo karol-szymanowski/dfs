@@ -31,28 +31,35 @@ impl ChunkPipeline {
         data: &Bytes,
     ) -> Result<(), PipelineError> {
         let mut futures = Vec::new();
-
-        let mut hasher = Hasher::new();
-        hasher.update(data);
-        let crc32 = hasher.finalize();
+        let data_id_vec = data_id.to_vec();
+        let frame_size = 1024 * 1024; // 1MB streaming frames
+        let packets: Vec<DataPacket> = data
+            .chunks(frame_size)
+            .enumerate()
+            .map(|(i, chunk_slice)| {
+                let mut h = Hasher::new();
+                h.update(chunk_slice);
+                DataPacket {
+                    data_id: data_id_vec.clone(),
+                    chunk: Some(ChunkHandle { id: handle }),
+                    payload: chunk_slice.to_vec(),
+                    crc32: h.finalize(),
+                    offset: (i * frame_size) as u64,
+                }
+            })
+            .collect();
 
         for loc in locations {
             let addr = format!("http://{}", loc.grpc_addr);
-            let payload = data.clone();
-            let data_id_vec = data_id.to_vec();
+            let packet_list = packets.clone();
 
             futures.push(tokio::spawn(async move {
                 let mut client = ChunkDataServiceClient::connect(addr)
                     .await
-                    .map_err(|e| tonic::Status::unavailable(e.to_string()))?;
-                let packet = DataPacket {
-                    data_id: data_id_vec,
-                    chunk: Some(ChunkHandle { id: handle }),
-                    payload: payload.to_vec(),
-                    crc32,
-                    offset: 0,
-                };
-                let stream = tokio_stream::once(packet);
+                    .map_err(|e| tonic::Status::unavailable(e.to_string()))?
+                    .max_decoding_message_size(128 * 1024 * 1024)
+                    .max_encoding_message_size(128 * 1024 * 1024);
+                let stream = tokio_stream::iter(packet_list);
                 client.push_data(stream).await?;
                 Ok::<(), tonic::Status>(())
             }));
@@ -83,7 +90,10 @@ impl ChunkPipeline {
 
         // 2. Control RPC to primary only
         let primary_addr = format!("http://{}", primary.grpc_addr);
-        let mut primary_client = ChunkDataServiceClient::connect(primary_addr).await?;
+        let mut primary_client = ChunkDataServiceClient::connect(primary_addr)
+            .await?
+            .max_decoding_message_size(128 * 1024 * 1024)
+            .max_encoding_message_size(128 * 1024 * 1024);
 
         let req = WriteChunkRequest {
             data_id,
@@ -110,7 +120,10 @@ impl ChunkPipeline {
         Self::push_data_to_all(&all_locs, handle, &data_id, &data).await?;
 
         let primary_addr = format!("http://{}", primary.grpc_addr);
-        let mut primary_client = ChunkDataServiceClient::connect(primary_addr).await?;
+        let mut primary_client = ChunkDataServiceClient::connect(primary_addr)
+            .await?
+            .max_decoding_message_size(128 * 1024 * 1024)
+            .max_encoding_message_size(128 * 1024 * 1024);
 
         let req = RecordAppendRequest {
             data_id,
@@ -135,7 +148,10 @@ impl ChunkPipeline {
         let mut last_err = None;
         for loc in locations {
             let addr = format!("http://{}", loc.grpc_addr);
-            if let Ok(mut client) = ChunkDataServiceClient::<Channel>::connect(addr).await {
+            if let Ok(client) = ChunkDataServiceClient::<Channel>::connect(addr).await {
+                let mut client = client
+                    .max_decoding_message_size(128 * 1024 * 1024)
+                    .max_encoding_message_size(128 * 1024 * 1024);
                 let req = ReadRequest {
                     chunk: Some(ChunkHandle { id: handle }),
                     offset,

@@ -230,14 +230,21 @@ impl ChunkDataService for ChunkDataServiceImpl {
             .read_chunk_data(handle, req.offset, req.length)
             .map_err(|e| Status::not_found(e.to_string()))?;
 
-        let crc = compute_block_crc32(&data);
-        let resp = ReadChunkResponse {
-            payload: data.to_vec(),
-            crc32: crc,
-            offset: req.offset,
-        };
+        let frame_size = 1024 * 1024; // 1 MB streaming frames
+        let responses: Vec<ReadChunkResponse> = data
+            .chunks(frame_size)
+            .enumerate()
+            .map(|(i, chunk_slice)| {
+                let crc = compute_block_crc32(chunk_slice);
+                ReadChunkResponse {
+                    payload: chunk_slice.to_vec(),
+                    crc32: crc,
+                    offset: req.offset + (i * frame_size) as u64,
+                }
+            })
+            .collect();
 
-        let stream = tokio_stream::once(Ok(resp));
+        let stream = tokio_stream::iter(responses).map(Ok);
         Ok(Response::new(Box::pin(stream)))
     }
 }
