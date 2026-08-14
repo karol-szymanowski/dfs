@@ -2,6 +2,8 @@
 
 Production-grade reimplementation of the Google File System (GFS), written in Rust and architected for bare-metal ARM64 Raspberry Pi clusters orchestrated by K3s.
 
+> 📖 **Hands-On Learning Guide & Roadmap**: See [**`TASKS.md`**](file:///Users/karolszymanowski/projects/dfs/TASKS.md) for the complete educational plan, distributed systems concepts (inodes, bit rot, leases, VFS), and step-by-step implementation tasks.
+
 ```mermaid
 flowchart TD
     subgraph Clients
