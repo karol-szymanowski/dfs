@@ -1,0 +1,19 @@
+[package]
+name = "gfs-fuse"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gfs-client = { workspace = true }
+gfs-proto = { workspace = true }
+tokio = { workspace = true }
+bytes = { workspace = true }
+dashmap = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser = { workspace = true }

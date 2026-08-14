@@ -1,0 +1,26 @@
+[package]
+name = "gfs-chunkserver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gfs-proto = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tokio-stream = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+bytes = { workspace = true }
+dashmap = { workspace = true }
+parking_lot = { workspace = true }
+memmap2 = { workspace = true }
+crc32fast = { workspace = true }
+bincode = { workspace = true }
+serde = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+rand = { workspace = true }
+tempfile = { workspace = true }

@@ -1,0 +1,24 @@
+syntax = "proto3";
+package gfs.p2p_clone;
+
+import "common.proto";
+
+message CloneChunkRequest {
+    gfs.common.ChunkHandle chunk = 1;
+    gfs.common.ChunkVersion version = 2;
+    bytes payload = 3;
+    bytes meta = 4;
+    uint64 offset = 5;
+    bool is_last_frame = 6;
+    uint32 frame_crc32 = 7;
+    uint32 full_chunk_crc32 = 8;
+}
+
+message CloneChunkResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+service CloneService {
+    rpc ClonePush(stream CloneChunkRequest) returns (CloneChunkResponse);
+}

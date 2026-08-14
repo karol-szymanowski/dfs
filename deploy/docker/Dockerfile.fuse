@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+FROM --platform=$BUILDPLATFORM rust:1.82-slim AS builder
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y musl-tools clang libfuse-dev protobuf-compiler && rustup target add aarch64-unknown-linux-musl x86_64-unknown-linux-musl
+WORKDIR /build
+COPY . .
+RUN case "$TARGETARCH" in \
+      arm64) TARGET=aarch64-unknown-linux-musl ;; \
+      amd64) TARGET=x86_64-unknown-linux-musl ;; \
+    esac && \
+    cargo build --release --target $TARGET -p gfs-fuse && \
+    mkdir -p /build/out && \
+    cp target/$TARGET/release/gfs-fuse /build/out/
+
+FROM gcr.io/distroless/static:nonroot
+COPY --from=builder /build/out/gfs-fuse /usr/local/bin/gfs-fuse
+USER nonroot:nonroot
+ENTRYPOINT ["/usr/local/bin/gfs-fuse"]

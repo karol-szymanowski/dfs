@@ -1,0 +1,20 @@
+[package]
+name = "gfs-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gfs-proto = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tokio-stream = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+bytes = { workspace = true }
+crc32fast = { workspace = true }
+parking_lot = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+rand = { workspace = true }

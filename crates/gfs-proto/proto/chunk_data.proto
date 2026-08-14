@@ -1,0 +1,74 @@
+syntax = "proto3";
+package gfs.chunk_data;
+
+import "common.proto";
+
+message DataPacket {
+    bytes data_id = 1;
+    gfs.common.ChunkHandle chunk = 2;
+    bytes payload = 3;
+    uint32 crc32 = 4;
+    uint64 offset = 5;
+}
+
+message PushDataAck {
+    bytes data_id = 1;
+    bool success = 2;
+    uint32 bytes_received = 3;
+}
+
+message WriteChunkRequest {
+    bytes data_id = 1;
+    gfs.common.ChunkHandle chunk = 2;
+    uint64 offset = 3;
+    repeated gfs.common.ChunkLocation secondaries = 4;
+}
+
+message WriteChunkResponse {
+    bool success = 1;
+    uint32 bytes_written = 2;
+}
+
+message RecordAppendRequest {
+    bytes data_id = 1;
+    gfs.common.ChunkHandle chunk = 2;
+    repeated gfs.common.ChunkLocation secondaries = 3;
+}
+
+message RecordAppendResponse {
+    bool success = 1;
+    uint64 offset = 2;
+    bool padded = 3;
+}
+
+message ApplyMutationRequest {
+    bytes data_id = 1;
+    gfs.common.ChunkHandle chunk = 2;
+    uint64 offset = 3;
+    uint64 mutation_sequence = 4;
+    bool is_pad = 5;
+}
+
+message ApplyMutationResponse {
+    bool success = 1;
+}
+
+message ReadRequest {
+    gfs.common.ChunkHandle chunk = 1;
+    uint64 offset = 2;
+    uint32 length = 3;
+}
+
+message ReadChunkResponse {
+    bytes payload = 1;
+    uint32 crc32 = 2;
+    uint64 offset = 3;
+}
+
+service ChunkDataService {
+    rpc PushData(stream DataPacket) returns (PushDataAck);
+    rpc WriteChunk(WriteChunkRequest) returns (WriteChunkResponse);
+    rpc RecordAppend(RecordAppendRequest) returns (RecordAppendResponse);
+    rpc ApplyMutation(ApplyMutationRequest) returns (ApplyMutationResponse);
+    rpc Read(ReadRequest) returns (stream ReadChunkResponse);
+}

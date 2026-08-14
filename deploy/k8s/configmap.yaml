@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gfs-config
+  namespace: default
+data:
+  GFS_REPLICATION_FACTOR: "3"
+  GFS_HEARTBEAT_INTERVAL_SECS: "5"
+  GFS_LEASE_DURATION_SECS: "60"
+  GFS_SCRUB_INTERVAL_SECS: "86400"

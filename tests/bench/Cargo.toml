@@ -1,0 +1,16 @@
+[package]
+name = "gfs-bench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gfs-client = { workspace = true }
+gfs-proto = { workspace = true }
+tokio = { workspace = true }
+bytes = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

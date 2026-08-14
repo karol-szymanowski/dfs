@@ -1,0 +1,23 @@
+syntax = "proto3";
+package gfs.common;
+
+message ChunkHandle {
+    uint64 id = 1;
+}
+
+message ChunkVersion {
+    uint64 value = 1;
+}
+
+message NodeId {
+    string value = 1;
+}
+
+message ChunkLocation {
+    NodeId node = 1;
+    string grpc_addr = 2;
+}
+
+message Timestamp {
+    int64 unix_millis = 1;
+}

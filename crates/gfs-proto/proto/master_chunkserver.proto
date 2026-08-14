@@ -1,0 +1,69 @@
+syntax = "proto3";
+package gfs.master_chunkserver;
+
+import "common.proto";
+
+message ChunkReport {
+    gfs.common.ChunkHandle handle = 1;
+    gfs.common.ChunkVersion version = 2;
+    uint32 crc32 = 3;
+    bool corrupted = 4;
+}
+
+message HeartbeatRequest {
+    gfs.common.NodeId node = 1;
+    string grpc_addr = 2;
+    uint64 free_bytes = 3;
+    uint64 used_bytes = 4;
+    repeated ChunkReport chunks = 5;
+}
+
+enum CommandType {
+    INVALIDATE_CHUNK = 0;
+    CLONE_TO = 1;
+    DELETE_CHUNK = 2;
+}
+
+message InvalidateChunkCommand {
+    gfs.common.ChunkHandle handle = 1;
+}
+
+message CloneToCommand {
+    gfs.common.ChunkHandle handle = 1;
+    gfs.common.ChunkVersion version = 2;
+    gfs.common.ChunkLocation target = 3;
+}
+
+message DeleteChunkCommand {
+    gfs.common.ChunkHandle handle = 1;
+}
+
+message MasterCommand {
+    CommandType command_type = 1;
+    oneof payload {
+        InvalidateChunkCommand invalidate = 2;
+        CloneToCommand clone_to = 3;
+        DeleteChunkCommand delete_chunk = 4;
+    }
+}
+
+message HeartbeatResponse {
+    repeated MasterCommand commands = 1;
+}
+
+message LeaseRequest {
+    gfs.common.NodeId node = 1;
+    gfs.common.ChunkHandle handle = 2;
+}
+
+message LeaseResponse {
+    bool granted = 1;
+    gfs.common.ChunkHandle handle = 2;
+    gfs.common.ChunkVersion version = 3;
+    int64 lease_expiry_unix_millis = 4;
+}
+
+service MasterChunkService {
+    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+    rpc RequestLease(LeaseRequest) returns (LeaseResponse);
+}

@@ -1,0 +1,63 @@
+syntax = "proto3";
+package gfs.client_master;
+
+import "common.proto";
+
+message CreateFileRequest {
+    string path = 1;
+}
+
+message CreateFileResponse {
+    bool success = 1;
+}
+
+message PathRequest {
+    string path = 1;
+}
+
+message FileInfo {
+    string path = 1;
+    uint64 size = 2;
+    repeated gfs.common.ChunkHandle chunks = 3;
+    gfs.common.Timestamp mtime = 4;
+    gfs.common.Timestamp ctime = 5;
+    bool is_directory = 6;
+}
+
+message ChunkLocationsResponse {
+    repeated gfs.common.ChunkLocation locations = 1;
+    optional gfs.common.ChunkLocation primary = 2;
+    gfs.common.ChunkVersion version = 3;
+    int64 lease_expiry_unix_millis = 4;
+}
+
+message AllocateChunkRequest {
+    string path = 1;
+    uint32 chunk_index = 2;
+}
+
+message ListDirectoryResponse {
+    repeated FileInfo entries = 1;
+}
+
+message Empty {}
+
+message SyncLogEntry {
+    uint64 sequence_number = 1;
+    bytes payload = 2;
+    uint32 crc32 = 3;
+}
+
+message SyncLogRequest {
+    uint64 from_sequence = 1;
+}
+
+service ClientMasterService {
+    rpc CreateFile(CreateFileRequest) returns (CreateFileResponse);
+    rpc GetFileInfo(PathRequest) returns (FileInfo);
+    rpc GetChunkLocations(gfs.common.ChunkHandle) returns (ChunkLocationsResponse);
+    rpc AllocateChunk(AllocateChunkRequest) returns (ChunkLocationsResponse);
+    rpc ListDirectory(PathRequest) returns (ListDirectoryResponse);
+    rpc DeleteFile(PathRequest) returns (Empty);
+    rpc SyncLog(SyncLogRequest) returns (stream SyncLogEntry);
+}
