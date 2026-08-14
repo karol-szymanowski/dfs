@@ -70,8 +70,7 @@ impl GfsClient {
             last.id
         } else {
             let resp = self.master.allocate_chunk(path, 0).await?;
-            // Primary chunk
-            let h = 1; // Or allocated handle
+            let h = resp.handle.map(|h| h.id).unwrap_or(1);
             self.cache.insert(h, resp);
             h
         };

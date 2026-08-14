@@ -1,4 +1,4 @@
-.PHONY: all build build-arm64 build-amd64 test test-chaos bench fmt lint docker-build docker-push k3s-deploy k3s-teardown clean
+.PHONY: all build build-arm64 build-amd64 test test-chaos test-cluster bench fmt lint docker-build docker-push k3s-deploy k3s-teardown clean
 
 REGISTRY ?= localhost:5000
 TAG ?= latest
@@ -19,6 +19,9 @@ test:
 
 test-chaos:
 	cargo test -p gfs-chaos -- --nocapture
+
+test-cluster: build
+	./scripts/test-local-cluster.sh
 
 bench:
 	cargo run --release -p gfs-bench

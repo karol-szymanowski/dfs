@@ -81,6 +81,9 @@ make lint
 # Run all workspace unit tests
 make test
 
+# Spin up local 3-node cluster and test 3x replication
+make test-cluster
+
 # Format codebase
 make fmt
 

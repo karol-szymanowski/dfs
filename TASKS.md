@@ -53,7 +53,7 @@
 
 ### Phase 5 — Admin & User CLI (`gfs-cli`)
 - [x] [**Task 5.1: CLI Subcommands (`put`, `get`, `ls`, `health`, `rm`)**](#task-51-cli-subcommands) — `src/commands/` (clap CLI utilities)
-- [ ] [**Task 5.2: End-to-End CLI Smoke Tests**](#task-52-end-to-end-cli-smoke-tests) — `crates/gfs-cli/tests/` (testing upload, download, list, delete against live cluster)
+- [x] [**Task 5.2: End-to-End CLI Smoke Tests**](#task-52-end-to-end-cli-smoke-tests) — `scripts/test-local-cluster.sh` / `make test-cluster` (live 3-node cluster testing)
 
 ### Phase 6 — Chaos Engineering & Benchmarking (`tests/chaos`, `tests/bench`)
 - [x] [**Task 6.0: Chaos & Benchmark Skeletons**](#task-60-chaos--benchmark-skeletons) — `tests/chaos`, `tests/bench` (workspace integration and CLI arguments)
@@ -794,14 +794,14 @@ sequenceDiagram
 ---
 
 ### Task 5.2: End-to-End CLI Smoke Tests
-- **File**: `crates/gfs-cli/tests/cli_tests.rs`
-- **Status**: ⏳ **To Do**
-- **Why**: Proves CLI binary works against a running cluster.
+- **File**: `scripts/test-local-cluster.sh`
+- **Status**: ✅ **Implemented**
+- **Why**: Proves Master, ChunkServers, and CLI work together against a live cluster.
 - **How**:
-  Run integration test executing `gfs-cli put`, `gfs-cli ls`, `gfs-cli get`, and `gfs-cli rm`.
-- **Expected Result**:
+  Runs automated script spinning up 1 Master + 3 ChunkServers, uploading a file, verifying replication on all 3 storage nodes, and downloading with byte-for-byte diff checking.
+- **Expected Result & Verification**:
   ```bash
-  cargo test -p gfs-cli
+  make test-cluster
   ```
 
 ---

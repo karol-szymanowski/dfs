@@ -29,6 +29,7 @@ message ChunkLocationsResponse {
     optional gfs.common.ChunkLocation primary = 2;
     gfs.common.ChunkVersion version = 3;
     int64 lease_expiry_unix_millis = 4;
+    optional gfs.common.ChunkHandle handle = 5;
 }
 
 message AllocateChunkRequest {

@@ -137,6 +137,7 @@ impl ClientMasterService for ClientMasterServiceImpl {
                 value: chunk_meta.version,
             }),
             lease_expiry_unix_millis: lease_expiry,
+            handle: Some(ChunkHandle { id: req.id }),
         }))
     }
 
@@ -192,6 +193,7 @@ impl ClientMasterService for ClientMasterServiceImpl {
             primary: primary_loc,
             version: Some(ChunkVersion { value: 1 }),
             lease_expiry_unix_millis: 60_000,
+            handle: Some(ChunkHandle { id: handle }),
         }))
     }
 

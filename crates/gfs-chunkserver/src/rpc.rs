@@ -86,17 +86,26 @@ impl ChunkDataService for ChunkDataServiceImpl {
         // 2. Forward ApplyMutation to secondaries
         for sec in req.secondaries {
             let addr = format!("http://{}", sec.grpc_addr);
-            if let Ok(mut client) = ChunkDataServiceClient::connect(addr).await {
-                let apply_req = ApplyMutationRequest {
-                    data_id: req.data_id.clone(),
-                    chunk: Some(gfs_proto::common::ChunkHandle { id: handle }),
-                    offset: req.offset,
-                    mutation_sequence: 1,
-                    is_pad: false,
-                };
-                if let Err(e) = client.apply_mutation(apply_req).await {
-                    error!("Secondary replication failed for chunk {}: {}", handle, e);
-                    return Err(Status::internal(format!("Secondary write failed: {}", e)));
+            match ChunkDataServiceClient::connect(addr.clone()).await {
+                Ok(mut client) => {
+                    let apply_req = ApplyMutationRequest {
+                        data_id: req.data_id.clone(),
+                        chunk: Some(gfs_proto::common::ChunkHandle { id: handle }),
+                        offset: req.offset,
+                        mutation_sequence: 1,
+                        is_pad: false,
+                    };
+                    if let Err(e) = client.apply_mutation(apply_req).await {
+                        error!("Secondary replication failed for chunk {}: {}", handle, e);
+                        return Err(Status::internal(format!("Secondary write failed: {}", e)));
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to connect to secondary at {}: {}", addr, e);
+                    return Err(Status::internal(format!(
+                        "Failed to connect to secondary at {}: {}",
+                        addr, e
+                    )));
                 }
             }
         }
@@ -147,17 +156,26 @@ impl ChunkDataService for ChunkDataServiceImpl {
         // Forward to secondaries
         for sec in req.secondaries {
             let addr = format!("http://{}", sec.grpc_addr);
-            if let Ok(mut client) = ChunkDataServiceClient::connect(addr).await {
-                let apply_req = ApplyMutationRequest {
-                    data_id: req.data_id.clone(),
-                    chunk: Some(gfs_proto::common::ChunkHandle { id: handle }),
-                    offset,
-                    mutation_sequence: 1,
-                    is_pad: false,
-                };
-                if let Err(e) = client.apply_mutation(apply_req).await {
-                    error!("Secondary record append failed for chunk {}: {}", handle, e);
-                    return Err(Status::internal(format!("Secondary append failed: {}", e)));
+            match ChunkDataServiceClient::connect(addr.clone()).await {
+                Ok(mut client) => {
+                    let apply_req = ApplyMutationRequest {
+                        data_id: req.data_id.clone(),
+                        chunk: Some(gfs_proto::common::ChunkHandle { id: handle }),
+                        offset,
+                        mutation_sequence: 1,
+                        is_pad: false,
+                    };
+                    if let Err(e) = client.apply_mutation(apply_req).await {
+                        error!("Secondary record append failed for chunk {}: {}", handle, e);
+                        return Err(Status::internal(format!("Secondary append failed: {}", e)));
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to connect to secondary at {}: {}", addr, e);
+                    return Err(Status::internal(format!(
+                        "Failed to connect to secondary at {}: {}",
+                        addr, e
+                    )));
                 }
             }
         }
