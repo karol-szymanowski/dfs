@@ -1,0 +1,100 @@
+# Default values for gfs.
+# This is a YAML-formatted file.
+
+global:
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+
+# Distributed Cluster Configuration
+cluster:
+  replicationFactor: 3
+  leaseDurationSecs: 60
+  heartbeatIntervalSecs: 1
+  scrubIntervalSecs: 86400
+  oplogPath: "/tmp/gfs-master-oplog.bin"
+
+# Master Metadata Server Configuration
+master:
+  replicaCount: 3
+  image:
+    repository: localhost:5000/gfs-master
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 50051
+  pdb:
+    enabled: true
+    minAvailable: 1
+  antiAffinity:
+    enabled: true
+    # Use hard anti-affinity (required) or soft (preferred)
+    topologyKey: kubernetes.io/hostname
+  nodeSelector:
+    kubernetes.io/arch: arm64
+  tolerations:
+    - key: node-role.kubernetes.io/master
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/control-plane
+      effect: NoSchedule
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ChunkServer Storage Node DaemonSet Configuration
+chunkserver:
+  enabled: true
+  image:
+    repository: localhost:5000/gfs-chunkserver
+    tag: latest
+    pullPolicy: IfNotPresent
+  hostNetwork: true
+  disksDir: "/mnt/disks"
+  defaultStorageDir: "/mnt/gfs-storage"
+  skipDiskIsolation: false
+  nodeSelector:
+    kubernetes.io/arch: arm64
+  tolerations:
+    - key: node-role.kubernetes.io/master
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/control-plane
+      effect: NoSchedule
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# FUSE Client Mount DaemonSet (Mounts /mnt/gfs on every physical node)
+fuse:
+  enabled: true
+  image:
+    repository: localhost:5000/gfs-fuse
+    tag: latest
+    pullPolicy: IfNotPresent
+  mountPoint: "/mnt/gfs"
+  nodeSelector:
+    kubernetes.io/arch: arm64
+  tolerations:
+    - key: node-role.kubernetes.io/master
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/control-plane
+      effect: NoSchedule
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+# RBAC and ServiceAccount for Master Leader Election Leases
+rbac:
+  create: true
+  serviceAccountName: ""

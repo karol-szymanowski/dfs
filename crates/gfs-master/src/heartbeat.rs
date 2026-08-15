@@ -61,12 +61,15 @@ impl MasterChunkService for MasterChunkServiceImpl {
                 if let Some(meta) = self.chunk_table.get(handle.id) {
                     if meta.pending_delete {
                         commands.push(MasterCommand {
-                            command_type: gfs_proto::master_chunkserver::CommandType::DeleteChunk as i32,
-                            payload: Some(gfs_proto::master_chunkserver::master_command::Payload::DeleteChunk(
-                                gfs_proto::master_chunkserver::DeleteChunkCommand {
-                                    handle: Some(handle),
-                                },
-                            )),
+                            command_type: gfs_proto::master_chunkserver::CommandType::DeleteChunk
+                                as i32,
+                            payload: Some(
+                                gfs_proto::master_chunkserver::master_command::Payload::DeleteChunk(
+                                    gfs_proto::master_chunkserver::DeleteChunkCommand {
+                                        handle: Some(handle),
+                                    },
+                                ),
+                            ),
                         });
                         continue;
                     }

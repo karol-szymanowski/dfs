@@ -1,0 +1,54 @@
+{{- if .Values.fuse.enabled -}}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "gfs.fullname" . }}-fuse
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: fuse
+spec:
+  selector:
+    matchLabels:
+      {{- include "gfs.fuseSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gfs.fuseSelectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.fuse.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.fuse.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: fuse
+          image: "{{ .Values.global.imageRegistry | default "" }}{{ .Values.fuse.image.repository }}:{{ .Values.fuse.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.fuse.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          args:
+            - "--mount-point"
+            - {{ .Values.fuse.mountPoint | quote }}
+            - "--master"
+            - "http://{{ include "gfs.fullname" . }}-master.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.master.service.port }}"
+          securityContext:
+            privileged: true
+          resources:
+            {{- toYaml .Values.fuse.resources | nindent 12 }}
+          volumeMounts:
+            - name: fuse-device
+              mountPath: /dev/fuse
+            - name: gfs-mount
+              mountPath: {{ .Values.fuse.mountPoint }}
+              mountPropagation: Bidirectional
+      volumes:
+        - name: fuse-device
+          hostPath:
+            path: /dev/fuse
+        - name: gfs-mount
+          hostPath:
+            path: {{ .Values.fuse.mountPoint }}
+            type: DirectoryOrCreate
+{{- end }}

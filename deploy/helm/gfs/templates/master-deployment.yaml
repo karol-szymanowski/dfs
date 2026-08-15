@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gfs.fullname" . }}-master
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: master
+spec:
+  replicas: {{ .Values.master.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gfs.masterSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gfs.masterSelectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "gfs.serviceAccountName" . }}
+      {{- if .Values.master.antiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ include "gfs.fullname" . }}-master
+              topologyKey: {{ .Values.master.antiAffinity.topologyKey | default "kubernetes.io/hostname" }}
+      {{- end }}
+      {{- with .Values.master.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.master.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: master
+          image: "{{ .Values.global.imageRegistry | default "" }}{{ .Values.master.image.repository }}:{{ .Values.master.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.master.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: GFS_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: GFS_LISTEN_ADDR
+              value: "0.0.0.0:{{ .Values.master.service.port }}"
+            - name: GFS_OPLOG_PATH
+              value: {{ .Values.cluster.oplogPath | quote }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "gfs.fullname" . }}-config
+          ports:
+            - containerPort: {{ .Values.master.service.port }}
+              name: grpc
+          resources:
+            {{- toYaml .Values.master.resources | nindent 12 }}

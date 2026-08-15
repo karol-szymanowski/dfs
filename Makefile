@@ -1,7 +1,9 @@
-.PHONY: all build build-arm64 build-amd64 test test-chaos test-cluster bench fmt lint docker-build docker-push k3s-deploy k3s-teardown clean
+.PHONY: all build build-arm64 build-amd64 test test-chaos test-cluster bench fmt lint docker-build docker-push helm-lint helm-template helm-install helm-upgrade helm-uninstall clean
 
 REGISTRY ?= localhost:5000
 TAG ?= latest
+NAMESPACE ?= default
+RELEASE_NAME ?= gfs
 
 all: lint test build
 
@@ -43,21 +45,20 @@ docker-push:
 	docker push $(REGISTRY)/gfs-chunkserver:$(TAG)
 	docker push $(REGISTRY)/gfs-fuse:$(TAG)
 
-k3s-deploy:
-	kubectl apply -f deploy/k8s/rbac.yaml
-	kubectl apply -f deploy/k8s/configmap.yaml
-	kubectl apply -f deploy/k8s/master-service.yaml
-	kubectl apply -f deploy/k8s/master-pdb.yaml
-	kubectl apply -f deploy/k8s/master-deployment.yaml
-	kubectl apply -f deploy/k8s/chunkserver-daemonset.yaml
+helm-lint:
+	helm lint deploy/helm/gfs
 
-k3s-teardown:
-	kubectl delete -f deploy/k8s/chunkserver-daemonset.yaml --ignore-not-found
-	kubectl delete -f deploy/k8s/master-deployment.yaml --ignore-not-found
-	kubectl delete -f deploy/k8s/master-pdb.yaml --ignore-not-found
-	kubectl delete -f deploy/k8s/master-service.yaml --ignore-not-found
-	kubectl delete -f deploy/k8s/configmap.yaml --ignore-not-found
-	kubectl delete -f deploy/k8s/rbac.yaml --ignore-not-found
+helm-template:
+	helm template $(RELEASE_NAME) deploy/helm/gfs -n $(NAMESPACE)
+
+helm-install:
+	helm install $(RELEASE_NAME) deploy/helm/gfs -n $(NAMESPACE) --create-namespace
+
+helm-upgrade:
+	helm upgrade --install $(RELEASE_NAME) deploy/helm/gfs -n $(NAMESPACE)
+
+helm-uninstall:
+	helm uninstall $(RELEASE_NAME) -n $(NAMESPACE)
 
 clean:
 	cargo clean

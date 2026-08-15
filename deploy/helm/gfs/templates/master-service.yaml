@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gfs.fullname" . }}-master
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: master
+spec:
+  type: {{ .Values.master.service.type }}
+  ports:
+    - port: {{ .Values.master.service.port }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "gfs.masterSelectorLabels" . | nindent 4 }}

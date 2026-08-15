@@ -1,0 +1,16 @@
+apiVersion: v2
+name: gfs
+description: Google File System (GFS) in Rust for Bare-Metal ARM64/AMD64 K3s Clusters
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - storage
+  - distributed-filesystem
+  - gfs
+  - arm64
+  - raspberry-pi
+  - k3s
+home: https://github.com/karol-szymanowski/dfs
+maintainers:
+  - name: GFS Rust Maintainers

@@ -1,0 +1,78 @@
+{{- if .Values.chunkserver.enabled -}}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "gfs.fullname" . }}-chunkserver
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gfs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: chunkserver
+spec:
+  selector:
+    matchLabels:
+      {{- include "gfs.chunkserverSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gfs.chunkserverSelectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.chunkserver.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      {{- with .Values.chunkserver.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.chunkserver.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: chunkserver
+          image: "{{ .Values.global.imageRegistry | default "" }}{{ .Values.chunkserver.image.repository }}:{{ .Values.chunkserver.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.chunkserver.image.pullPolicy | default .Values.global.imagePullPolicy }}
+          env:
+            - name: GFS_NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: GFS_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: GFS_LISTEN_ADDR
+              value: "0.0.0.0:50052"
+            - name: GFS_MASTER_ADDR
+              value: "http://{{ include "gfs.fullname" . }}-master.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.master.service.port }}"
+            - name: GFS_STORAGE_DIR
+              value: {{ .Values.chunkserver.defaultStorageDir | quote }}
+            - name: GFS_DISKS_DIR
+              value: {{ .Values.chunkserver.disksDir | quote }}
+            {{- if .Values.chunkserver.skipDiskIsolation }}
+            - name: GFS_SKIP_DISK_ISOLATION
+              value: "true"
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "gfs.fullname" . }}-config
+          ports:
+            - containerPort: 50052
+              name: grpc
+          resources:
+            {{- toYaml .Values.chunkserver.resources | nindent 12 }}
+          volumeMounts:
+            - name: host-disks
+              mountPath: {{ .Values.chunkserver.disksDir }}
+            - name: host-storage
+              mountPath: {{ .Values.chunkserver.defaultStorageDir }}
+      volumes:
+        - name: host-disks
+          hostPath:
+            path: {{ .Values.chunkserver.disksDir }}
+            type: DirectoryOrCreate
+        - name: host-storage
+          hostPath:
+            path: {{ .Values.chunkserver.defaultStorageDir }}
+            type: DirectoryOrCreate
+{{- end }}

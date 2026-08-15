@@ -61,9 +61,9 @@
 - [ ] [**Task 6.2: Master Leader Failover Simulation**](#task-62-master-leader-failover-simulation) — `tests/chaos/src/main.rs` (kill leader master, verify standby acquisition and in-flight retry)
 - [ ] [**Task 6.3: Throughput & Latency Benchmark Harness**](#task-63-throughput--latency-benchmark-harness) — `tests/bench/src/main.rs` (MB/s throughput, p50/p99 latency, JSON export)
 
-### Phase 7 — Containerization & K3s Bare-Metal Deployment (`deploy/`)
+### Phase 7 — Containerization, Helm Chart & K3s Bare-Metal Deployment (`deploy/`)
 - [x] [**Task 7.1: Multi-Stage Dockerfiles**](#task-71-multi-stage-dockerfiles) — `deploy/docker/` (`Dockerfile.master`, `Dockerfile.chunkserver`, `Dockerfile.fuse`)
-- [x] [**Task 7.2: K3s Cluster Manifests**](#task-72-k3s-cluster-manifests) — `deploy/k8s/` (`rbac.yaml`, `configmap.yaml`, `master-service.yaml`, `master-pdb.yaml`, `master-deployment.yaml`, `chunkserver-daemonset.yaml`)
+- [x] [**Task 7.2: Production Helm Chart & K3s Manifests**](#task-72-production-helm-chart--k3s-manifests) — `deploy/helm/gfs/`, `deploy/k8s/` (`Chart.yaml`, `values.yaml`, templates for HA master, multi-disk chunkserver, universal FUSE mount)
 - [ ] [**Task 7.3: Image Size Verification & K3s Smoke Test**](#task-73-image-size-verification--k3s-smoke-test) — `deploy/` (verify image sizes ≤ 15MB distroless, apply to test cluster)
 
 ---

@@ -93,20 +93,30 @@ make build
 
 ---
 
-## Packaging & Kubernetes Deployment
+## Packaging & Kubernetes Deployment (Helm)
 
 ```bash
-# Build multi-arch Docker images (ARM64 & AMD64)
+# 1. Build multi-arch Docker images (ARM64 & AMD64)
 make docker-build REGISTRY=localhost:5000 TAG=v0.1.0
 
-# Push images to registry
+# 2. Push images to registry
 make docker-push REGISTRY=localhost:5000 TAG=v0.1.0
 
-# Deploy full stack to K3s cluster
-make k3s-deploy
+# 3. Lint and preview Helm templates
+make helm-lint
+make helm-template
+
+# 4. Deploy full stack to K3s cluster with Helm
+make helm-install NAMESPACE=default
+
+# Upgrade / customize values (e.g. 3 master replicas, multi-disk daemonset)
+helm upgrade --install gfs deploy/helm/gfs \
+  --set master.replicaCount=3 \
+  --set chunkserver.disksDir=/mnt/disks \
+  --set fuse.mountPoint=/mnt/gfs
 
 # Teardown stack
-make k3s-teardown
+make helm-uninstall NAMESPACE=default
 ```
 
 ---
